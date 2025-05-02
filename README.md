@@ -84,12 +84,6 @@ We welcome contributions! To contribute, follow these steps:
 
 6. **Submit a pull request** to the main repository.
 
-### Running Tests
-
-To run tests, use the following command:
-```bash
-python -m unittest discover -s src/test
-```
 
 ## Notes
 - The `sgdb` script will automatically handle the setup tasks before launching GDB.
