@@ -1,0 +1,36 @@
+#!/bin/bash
+# sgdb: AI-powered GDB launcher
+
+# Define the absolute path to your project directory
+PROJECT_DIR="/home/alay/sgdb"
+
+# Define the absolute path to the virtual environment
+VENV_PATH="$PROJECT_DIR/env"
+
+# Check if the virtual environment exists, if not, create it
+if [ ! -d "$VENV_PATH" ]; then
+    echo "Virtual environment not found. Creating one..."
+    python3 -m venv "$VENV_PATH"
+fi
+
+# Activate the Python virtual environment
+if [ -f "$VENV_PATH/bin/activate" ]; then
+    source "$VENV_PATH/bin/activate"
+else
+    echo "Error: Failed to activate the Python virtual environment at $VENV_PATH"
+    exit 1
+fi
+
+# Install required Python packages if requirements.txt exists
+if [ -f "$PROJECT_DIR/requirements.txt" ]; then
+    pip install --quiet -r "$PROJECT_DIR/requirements.txt"
+fi
+
+# Check for at least one argument (the executable)
+if [ $# -lt 1 ]; then
+    echo "Usage: sgdb <executable> [gdb options]"
+    exit 1
+fi
+
+# Launch gdb with the AI extension
+gdb "$@" -ex "source $PROJECT_DIR/src/gdb_ai.py"
