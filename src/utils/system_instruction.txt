@@ -9,8 +9,8 @@ Your task:
 Autonomously drive GDB by running appropriate commands.
 
 Collect necessary information (variables, memory, thread state, frames, expression, any many more). you can only
-use the given list of gdb commands : [ bt, up, down, p expression, list, frame, run, break, next, continue]
-
+use the given list of gdb commands : [ bt, up, down, p expression, list, frame, run, break, next, continue, info locals, info args]
+try to suggest fix with code
 too see code of some function use : list function_name
 you must be not repeat the privously suggested command.
 

@@ -1,6 +1,7 @@
 import gdb
 import subprocess
 import ast
+import time
 
 class ExplainFault(gdb.Command):
     def __init__(self):
@@ -42,12 +43,16 @@ class Ask(gdb.Command):
         question = arg
         history = []
         executed_commands = []
+        total_input_tokens = 0
+        total_output_tokens = 0
+        start_time = time.time()  # start timing
         print("========Running AI analysis========\n")
         try:
             history.append({
                 'role': 'user',
                 'content': question
             })
+            total_input_tokens += len(str(history))
             system_instruction = open('utils/system_instruction.txt', "r").read()
             root_cause_found = False
             ai_response = None
@@ -57,7 +62,7 @@ class Ask(gdb.Command):
                     str(history),
                     system_instruction,
                 ], stderr=subprocess.STDOUT)
-
+                total_output_tokens += len(ai_response)
                 ai_response = ast.literal_eval(ai_response.decode('utf-8'))
 
                 history.append({
@@ -89,6 +94,12 @@ class Ask(gdb.Command):
             
             print("========Root cause found========\n", ai_response.get('root_cause_analysis', 'No analysis provided'))
             print("========Suggested fix========\n", ai_response.get('code_fix_suggestion', 'No fix provided'))
+            total_cost = cost = (total_input_tokens / 1000000) * 0.075 + (total_output_tokens / 1000000) * 0.30
+            print("cost: $",total_cost)
+            end_time = time.time()    # end timing
+            elapsed_time = end_time - start_time
+            print(f"Time taken: {elapsed_time:.2f} seconds")
+            print(f"total commands executed: {len(executed_commands)}")
         except subprocess.CalledProcessError as e:
             print(f"Error executing AI script: {e.output.decode('utf-8')}")
         except Exception as ex:
@@ -96,4 +107,3 @@ class Ask(gdb.Command):
 
 Ask()
 
-# class Why(gdb.command):

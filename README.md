@@ -7,7 +7,8 @@ The `sgdb` script has been updated to handle all setup tasks automatically. You 
 1. **Set the env file:**
    - rename file .env.example with .env 
    - get and set the API keys 
-2. **Run the `sgdb` script:**
+2. **change the PROJECT_DIR file in sgdb**
+3. **Run the `sgdb` script:**
    ```bash
    ./sgdb <executable> [gdb options]
    ```
