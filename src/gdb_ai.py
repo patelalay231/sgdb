@@ -2,6 +2,14 @@ import gdb
 import subprocess
 import ast
 import time
+import os
+import inspect
+
+# Get absolute path to the src directory (where this file lives)
+BASE_DIR = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+HISTORY_PATH = os.path.join(BASE_DIR,"history.txt")
+EXPLAIN_SCRIPT = os.path.join(BASE_DIR, "explain_ai.py")
+ASK_SCRIPT = os.path.join(BASE_DIR, "ask_ai.py")
 
 class ExplainFault(gdb.Command):
     def __init__(self):
@@ -22,7 +30,7 @@ class ExplainFault(gdb.Command):
         print("\n Running AI Explanation...\n")
         try:
             output = subprocess.check_output([
-                "python3", "explain_ai.py",
+                "python3", EXPLAIN_SCRIPT,
                 signal, str(line_number), code
             ])
             print(output.decode('utf-8'))
@@ -39,47 +47,32 @@ class Ask(gdb.Command):
         super().__init__("ask", gdb.COMMAND_USER)
     
     def invoke(self, arg, from_tty):
-        # Get the user's question (if provided)
         question = arg
-        history = []
-        executed_commands = []
-        total_input_tokens = 0
+        history = ""
+        history += f"User query :- {question}"
+        total_input_tokens = len(str(history))
         total_output_tokens = 0
-        start_time = time.time()  # start timing
+        start_time = time.time()
+        executed_commands = []
         print("========Running AI analysis========\n")
         try:
-            history.append({
-                'role': 'user',
-                'content': question
-            })
-            total_input_tokens += len(str(history))
-            system_instruction = open('utils/system_instruction.txt', "r").read()
             root_cause_found = False
             ai_response = None
-            while root_cause_found == False:
-                ai_response = subprocess.check_output([
-                    "python3", "ask_ai.py",
-                    str(history),
-                    system_instruction,
+
+            while not root_cause_found:
+                ai_raw = subprocess.check_output([
+                    "python3", ASK_SCRIPT,
                 ], stderr=subprocess.STDOUT)
-                total_output_tokens += len(ai_response)
-                ai_response = ast.literal_eval(ai_response.decode('utf-8'))
 
-                history.append({
-                    'role': 'model',
-                    'content': ai_response
-                })
+                total_output_tokens += len(ai_raw)
+                ai_response = ast.literal_eval(ai_raw.decode('utf-8'))
                 root_cause_found = ai_response.get('root_cause_found', False)
-                follow_up_command = ai_response.get('follow_up_command', None)
-                if follow_up_command and follow_up_command not in executed_commands:
-                    executed_commands.append(follow_up_command)
-                    print(f"Executing follow-up command: {follow_up_command}")
+                follow_up_command = ai_response.get('follow_up_command')
+                history += f"\nCommand to run :- {follow_up_command}"
 
-                    # Check if the program is running
-                    program_info = gdb.execute("info program", to_string=True)
-                    if "not being run" in program_info or "has exited" in program_info:
-                        print("Program is not running. Re-run it...\n")
-                        return
+                if follow_up_command:
+                    print(f"Executing follow-up command: {follow_up_command}")
+                    executed_commands.append(follow_up_command)
                     try:
                         command_response = gdb.execute(follow_up_command, to_string=True)
                         print(command_response)
@@ -87,23 +80,24 @@ class Ask(gdb.Command):
                         print(f"Error executing follow-up command: {e}")
                         command_response = f"Command failed: {e}"
 
-                history.append({
-                    'role': 'user',
-                    'content': command_response
-                })
-            
-            print("========Root cause found========\n", ai_response.get('root_cause_analysis', 'No analysis provided'))
+                    if(len(command_response) <= 200):
+                        history += f"\n{follow_up_command} command response :- {command_response}"
+                
+                with open(HISTORY_PATH,"w") as f:
+                    f.write(history)
+
+            print("\n========Root cause found========\n", ai_response.get('root_cause_analysis', 'No analysis provided'))
             print("========Suggested fix========\n", ai_response.get('code_fix_suggestion', 'No fix provided'))
-            total_cost = cost = (total_input_tokens / 1000000) * 0.075 + (total_output_tokens / 1000000) * 0.30
-            print("cost: $",total_cost)
-            end_time = time.time()    # end timing
-            elapsed_time = end_time - start_time
-            print(f"Time taken: {elapsed_time:.2f} seconds")
-            print(f"total commands executed: {len(executed_commands)}")
+            total_cost = (total_input_tokens / 1_000_000) * 0.075 + (total_output_tokens / 1_000_000) * 0.30
+            print(f"\ncost: ${total_cost:.6f}")
+            print(f"Time taken: {time.time() - start_time:.2f} seconds")
+            print(f"Total commands executed: {len(executed_commands)}")
+            with open(HISTORY_PATH,"w") as f:
+                f.write("")
+
         except subprocess.CalledProcessError as e:
             print(f"Error executing AI script: {e.output.decode('utf-8')}")
         except Exception as ex:
             print(f"Unexpected error: {ex}")
 
 Ask()
-

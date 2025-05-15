@@ -29,7 +29,7 @@ if [ ! -f "$EXECUTABLE" ]; then
 fi
 
 # Change the working directory to the project directory
-cd "$PROJECT_DIR/src" || { echo "Error: Failed to change directory to $PROJECT_DIR/src"; exit 1; }
+# cd "$PROJECT_DIR/src" || { echo "Error: Failed to change directory to $PROJECT_DIR/src"; exit 1; }
 
 # Activate the Python virtual environment
 if [ -f "$VENV_PATH/bin/activate" ]; then
@@ -44,5 +44,4 @@ if [ -f "$PROJECT_DIR/requirements.txt" ]; then
     pip install --quiet -r "$PROJECT_DIR/requirements.txt"
 fi
 
-# Launch gdb with the AI extension and set the executable file
 gdb -ex "file $EXECUTABLE" "$@" -ex "source $PROJECT_DIR/src/gdb_ai.py"
